@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "main": " server.js",
   "scripts": {
-    "start":"nodemon server.js"
+    "start": "nodemon server.js"
   },
   "author": "Truong Cong Minh",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mongodb": "^6.13.1"
   },
   "devDependencies": {
     "eslint": "^9.20.1",
