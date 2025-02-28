@@ -9,4 +9,4 @@ class MongoDB {
     };
 }
 
-module.exports = MongoDB
+module.exports = MongoDB;
