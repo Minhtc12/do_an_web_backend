@@ -23,7 +23,7 @@ class ContactService {
 
     async create(payload){
         const contact = this.extractConacData(payload);
-        const result =await this.Contact.finOneAndUpdate(
+        const result =await this.Contact.findOneAndUpdate(
             contact,
             { $set: { favorite: contact.favorite ===true } },
             { returnDocument: "after", upsert: true }
@@ -47,7 +47,7 @@ class ContactService {
     }
     async update(id, payload){
         const filter={
-            _id:ObjectId.isValid(id) ? new ObjectId(id): null,
+            _id: ObjectId.isValid(id) ? new ObjectId(id): null,
         };
         const update =this.extractConacData(payload);
         const result =await this.Contact.findOneAndUpdate(
@@ -55,7 +55,7 @@ class ContactService {
             { $set: update },
             { returnDocument: "after"}
         );
-        return result.value;
+        return result;
     }
     async delete(id){
         const result =await this.Contact.findOneAndDelete({

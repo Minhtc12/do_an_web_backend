@@ -47,14 +47,14 @@ exports.findOne =async (req, res, next) =>{
         return next(
             new ApiError(
                 500,
-                'Error retrieving contact with id=${req.params.id}'
+                `Error retrieving contact with id=${req.params.id}`
             )
         );
     }
 };
 exports.update =async (req, res, next) =>{
     if(Object.keys(req.body).length===0){
-        return next( ApiError(400,"Data to update can not be empty"));
+        return next( new ApiError(400,"Data to update can not be empty"));
     }
     try{
           const contactService=new ContactService(MongoDB.client);
@@ -65,7 +65,7 @@ exports.update =async (req, res, next) =>{
        return res.send({message: "Contact was updated successfully"});
     }catch(error){
         return next(
-            new ApiError(500, 'Error updating contact with id=${req.params.id}')
+            new ApiError(500, `Error updating contact with id=${req.params.id}`)
         );
     }
 };
@@ -79,7 +79,7 @@ exports.delete =async (req, res, next) =>{
        return res.send({message: "Contact was delete successfully"});
     }catch(error){
         return next(
-            new ApiError(500, 'Could not delete contact with id=${req.params.id}')
+            new ApiError(500, `Could not delete contact with id=${req.params.id}`)
         );
     }
 };
@@ -88,7 +88,7 @@ exports.deleteAll =async (req, res, next) =>{
         const contactService=new ContactService(MongoDB.client);
         const deletedCount = await contactService.deleteAll();
         return res.send({
-            message: '${deletedCount} contacts were deleted successfully',
+            message: `${deletedCount} contacts were deleted successfully`,
         });
     }catch(error){
         return next(
