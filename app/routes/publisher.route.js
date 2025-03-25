@@ -1,12 +1,16 @@
 const express = require("express");
-const publishers = require("../controllers/publisher.controller");
+const publisherController = require("../controllers/publisher.controller");
+const { authenticate, authorize } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-router.post("/", publishers.create);            // Thêm mới nhà xuất bản
-router.get("/", publishers.findAll);            // Lấy danh sách nhà xuất bản
-router.get("/:MANXB", publishers.findById);     // Lấy nhà xuất bản theo MANXB
-router.put("/:MANXB", publishers.update);       // Cập nhật nhà xuất bản
-router.delete("/:MANXB", publishers.delete);    // Xóa nhà xuất bản
+// Các route bảo vệ với phân quyền
+router.post("/", authenticate, authorize(["Quản lý"]), publisherController.create); // Thêm nhà xuất bản (chỉ Quản lý)
+router.put("/:MANXB", authenticate, authorize(["Quản lý"]), publisherController.update); // Sửa nhà xuất bản (chỉ Quản lý)
+router.delete("/:MANXB", authenticate, authorize(["Quản lý"]), publisherController.delete); // Xóa nhà xuất bản (chỉ Quản lý)
+
+// Các route công khai
+router.get("/", publisherController.findAll); // Lấy danh sách nhà xuất bản
+router.get("/:MANXB", publisherController.findById); // Lấy thông tin nhà xuất bản
 
 module.exports = router;

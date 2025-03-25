@@ -1,16 +1,19 @@
 const express = require("express");
-const borrowings = require("../controllers/borrowing.controller");
+const borrowingController = require("../controllers/borrowing.controller");
+const { authenticate, authorize } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-router.post("/", borrowings.create); // Thêm bản ghi mượn sách mới
-router.get("/", borrowings.findAll); // Lấy danh sách tất cả bản ghi mượn sách
-router.get("/:MASACH/:MADOCGIA/:NGAYMUON", borrowings.findById); // Lấy bản ghi mượn sách theo MASACH, MADOCGIA, NGAYMUON
-router.put("/:MASACH/:MADOCGIA/:NGAYMUON", borrowings.update); // Cập nhật bản ghi mượn sách
-router.delete("/:MASACH/:MADOCGIA/:NGAYMUON", borrowings.delete); // Xóa bản ghi mượn sách
-router.delete("/", borrowings.deleteAll); // Xóa toàn bộ bản ghi mượn sách
-router.get("/unreturned", borrowings.findUnreturnedBooks); // Lấy danh sách sách chưa trả
-router.get("/reader/:MADOCGIA", borrowings.findBorrowingHistoryByReader); // Lấy lịch sử mượn của độc giả
-router.get("/book/:MASACH", borrowings.findBorrowingHistoryByBook); // Lấy lịch sử mượn của sách
+// Gửi yêu cầu mượn sách (dành cho độc giả)
+router.post("/request", authenticate, borrowingController.createBorrowRequest);
+
+// Nhân viên lấy danh sách yêu cầu chờ
+router.get("/requests/pending", authenticate, authorize(["Nhân viên", "Quản lý"]), borrowingController.getPendingRequests);
+
+// Nhân viên xác nhận mượn sách
+router.put("/approve/:MaMuon", authenticate, authorize(["Nhân viên", "Quản lý"]), borrowingController.approveBorrow);
+
+// Trả sách
+router.put("/return/:MaMuon", authenticate, authorize(["Nhân viên", "Quản lý"]), borrowingController.returnBook);
 
 module.exports = router;

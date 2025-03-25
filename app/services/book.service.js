@@ -1,33 +1,11 @@
-const { ObjectId } = require("mongodb");
-const propertyName = "[NGUONGOC/TACGIA]";
+const Book = require("../models/book.model");
+const Publisher = require("../models/publisher.model");
+const BorrowingRecord = require("../models/borrowing.model");
 
 class BookService {
-    constructor(client) {
-        this.Book = client.db().collection("SACH");           // Collection SACH
-        this.Publisher = client.db().collection("NHAXUATBAN"); // Collection NHAXUATBAN
-        this.BorrowingRecord = client.db().collection("THEODOIMUONSACH"); // Collection THEODOIMUONSACH
-    }
-
-    // Phương thức chuẩn hóa dữ liệu sách
-    extractBookData(payload) {
-        const book = {
-            MASACH: payload.MASACH,
-            TENSACH: payload.TENSACH,
-            DONGIA: payload.DONGIA,
-            SOQUYEN: payload.SOQUYEN,
-            NAMXUATBAN: payload.NAMXUATBAN,
-            MANXB: payload.MANXB,
-            [propertyName]: payload["[NGUONGOC/TACGIA]"],
-        };
-        Object.keys(book).forEach(
-            (key) => book[key] === undefined && delete book[key]
-        );
-        return book;
-    }
-
     // Kiểm tra sự tồn tại của nhà xuất bản
     async validatePublisher(MANXB) {
-        const publisher = await this.Publisher.findOne({ MANXB: MANXB });
+        const publisher = await Publisher.findOne({ MANXB });
         if (!publisher) {
             throw new Error("Nhà xuất bản không tồn tại.");
         }
@@ -35,111 +13,79 @@ class BookService {
 
     // Thêm sách mới
     async create(payload) {
-        await this.validatePublisher(payload.MANXB); // Kiểm tra MANXB
-        const book = this.extractBookData(payload);
+        await this.validatePublisher(payload.MANXB); // Kiểm tra nhà xuất bản
 
+        // Tạo mới sách
+        const book = new Book(payload);
         try {
-            const result = await this.Book.insertOne(book);
-            return result.ops[0]; // Trả về sách mới được thêm
+            const savedBook = await book.save();
+            return savedBook;
         } catch (error) {
-            if (error.code === 11000) {
+            if (error.code === 11000) { // Lỗi trùng lặp
                 throw new Error("MASACH đã tồn tại. Vui lòng sử dụng một mã khác.");
             }
             throw error;
         }
     }
 
-    // Lấy tất cả sách (với bộ lọc tùy chọn)
+    // Lấy danh sách tất cả sách
     async find(filter) {
-        const cursor = this.Book.find(filter).project({ _id: 0 }); // Loại bỏ _id khi trả về
-        return await cursor.toArray();
+        return await Book.find(filter).select("-_id"); // Loại bỏ _id khi trả về
     }
 
     // Lấy sách theo MASACH
     async findById(masach) {
-        return await this.Book.findOne({ MASACH: masach }, { projection: { _id: 0 } });
+        const book = await Book.findOne({ MASACH: masach }).select("-_id");
+        if (!book) {
+            throw new Error(`Không tìm thấy sách với MASACH=${masach}.`);
+        }
+        return book;
     }
 
-    // Cập nhật thông tin sách theo MASACH
+    // Cập nhật thông tin sách
     async update(masach, payload) {
-        const filter = { MASACH: masach }; // Truy vấn theo MASACH
-        const update = this.extractBookData(payload);
-        const result = await this.Book.findOneAndUpdate(
-            filter,
-            { $set: update },
-            { returnDocument: "after" }
+        const updatedBook = await Book.findOneAndUpdate(
+            { MASACH: masach },
+            { $set: payload },
+            { new: true } // Trả về tài liệu sau khi cập nhật
         );
 
-        if (!result.value) {
+        if (!updatedBook) {
             throw new Error(`Không tìm thấy sách với MASACH=${masach}.`);
         }
 
-        return result.value;
+        return updatedBook;
     }
 
     // Xóa sách theo MASACH
     async delete(masach) {
-        // Kiểm tra bản ghi mượn sách liên quan trước khi xóa
-        const borrowingCount = await this.BorrowingRecord.countDocuments({ MASACH: masach });
+        // Kiểm tra nếu có bản ghi mượn sách liên quan
+        const borrowingCount = await BorrowingRecord.countDocuments({ MASACH: masach });
         if (borrowingCount > 0) {
             throw new Error("Không thể xóa sách vì vẫn còn bản ghi mượn sách liên quan.");
         }
 
-        const result = await this.Book.findOneAndDelete({ MASACH: masach });
-
-        if (!result.value) {
+        const deletedBook = await Book.findOneAndDelete({ MASACH: masach });
+        if (!deletedBook) {
             throw new Error(`Không tìm thấy sách với MASACH=${masach}.`);
         }
 
-        return result.value;
-    }
-
-    // Xóa tất cả sách
-    async deleteAll() {
-        const result = await this.Book.deleteMany({});
-        return result.deletedCount; // Trả về số lượng sách đã xóa
+        return deletedBook;
     }
 
     // Tìm kiếm sách theo tên hoặc tác giả
     async search(query) {
-        return await this.find({
+        return await Book.find({
             $or: [
-                { TENSACH: { $regex: new RegExp(query), $options: "i" } },
-                { [propertyName]: { $regex: new RegExp(query), $options: "i" } },
+                { TENSACH: { $regex: new RegExp(query, "i") } },
+                { "[NGUONGOC/TACGIA].TACGIA": { $regex: new RegExp(query, "i") } },
             ],
-        });
-    }
-
-    // Lấy thông tin sách kèm nhà xuất bản
-    async getBooksWithPublisher() {
-        const books = await this.Book.aggregate([
-            {
-                $lookup: {
-                    from: "NHAXUATBAN",
-                    localField: "MANXB",
-                    foreignField: "MANXB",
-                    as: "PublisherDetails",
-                },
-            },
-            {
-                $project: {
-                    MASACH: 1,
-                    TENSACH: 1,
-                    DONGIA: 1,
-                    SOQUYEN: 1,
-                    NAMXUATBAN: 1,
-                    [propertyName]: 1,
-                    PublisherDetails: { $arrayElemAt: ["$PublisherDetails.TENNXB", 0] }, // Lấy TenNXB
-                },
-            },
-        ]).toArray();
-
-        return books;
+        }).select("-_id");
     }
 
     // Lấy danh sách tất cả sách kèm số lần mượn
     async getBooksWithBorrowingCount() {
-        const books = await this.Book.aggregate([
+        const books = await Book.aggregate([
             {
                 $lookup: {
                     from: "THEODOIMUONSACH",
@@ -155,20 +101,13 @@ class BookService {
                     BorrowingCount: { $size: "$BorrowingRecords" }, // Đếm số lần mượn
                 },
             },
-        ]).toArray();
-
+        ]);
         return books;
-    }
-
-    // Đếm số lần mượn sách theo MASACH
-    async countBorrowedTimes(masach) {
-        const count = await this.BorrowingRecord.countDocuments({ MASACH: masach });
-        return count; // Số lần sách đã được mượn
     }
 
     // Lọc sách theo nhà xuất bản
     async findBooksByPublisher(MANXB) {
-        return await this.Book.find({ MANXB: MANXB }).project({ _id: 0 }).toArray();
+        return await Book.find({ MANXB }).select("-_id");
     }
 }
 

@@ -1,135 +1,72 @@
 const BookService = require("../services/book.service");
-const MongoDB = require("../utils/mongodb.util");
-const ApiError = require("../api-error");
 
-// Thêm sách mới
 exports.create = async (req, res, next) => {
     try {
-        const bookService = new BookService(MongoDB.client);
-        const document = await bookService.create(req.body);
-
-        res.send({
-            message: "Sách được thêm thành công.",
-            data: document,
-        });
+        const bookService = new BookService();
+        const result = await bookService.create(req.body);
+        res.json(result);
     } catch (error) {
-        next(new ApiError(500, "Có lỗi xảy ra khi thêm sách."));
+        next(error);
     }
 };
 
-// Lấy danh sách tất cả sách
 exports.findAll = async (req, res, next) => {
     try {
-        const bookService = new BookService(MongoDB.client);
-        const documents = await bookService.find(req.query);
-
-        res.send(documents);
+        const bookService = new BookService();
+        const books = await bookService.find(req.query);
+        res.json(books);
     } catch (error) {
-        next(new ApiError(500, "Có lỗi xảy ra khi lấy danh sách sách."));
+        next(error);
     }
 };
 
-// Lấy sách theo MASACH
 exports.findById = async (req, res, next) => {
     try {
-        const bookService = new BookService(MongoDB.client);
-        const document = await bookService.findById(req.params.MASACH);
-
-        if (!document) {
-            return next(new ApiError(404, "Không tìm thấy sách."));
-        }
-
-        res.send(document);
+        const bookService = new BookService();
+        const book = await bookService.findById(req.params.MASACH);
+        res.json(book);
     } catch (error) {
-        next(new ApiError(500, `Có lỗi xảy ra khi tìm sách với MASACH=${req.params.MASACH}.`));
+        next(error);
     }
 };
 
-// Cập nhật thông tin sách theo MASACH
 exports.update = async (req, res, next) => {
-    if (Object.keys(req.body).length === 0) {
-        return next(new ApiError(400, "Dữ liệu cập nhật không được để trống."));
-    }
-
     try {
-        const bookService = new BookService(MongoDB.client);
-        const document = await bookService.update(req.params.MASACH, req.body);
-
-        if (!document) {
-            return next(new ApiError(404, "Không tìm thấy sách."));
-        }
-
-        res.send({
-            message: "Cập nhật sách thành công.",
-            data: document,
-        });
+        const bookService = new BookService();
+        const updatedBook = await bookService.update(req.params.MASACH, req.body);
+        res.json(updatedBook);
     } catch (error) {
-        next(new ApiError(500, `Có lỗi xảy ra khi cập nhật sách với MASACH=${req.params.MASACH}.`));
+        next(error);
     }
 };
 
-// Xóa sách theo MASACH
 exports.delete = async (req, res, next) => {
     try {
-        const bookService = new BookService(MongoDB.client);
-        const document = await bookService.delete(req.params.MASACH);
-
-        if (!document) {
-            return next(new ApiError(404, "Không tìm thấy sách."));
-        }
-
-        res.send({
-            message: "Xóa sách thành công.",
-            data: document,
-        });
+        const bookService = new BookService();
+        const deletedBook = await bookService.delete(req.params.MASACH);
+        res.json(deletedBook);
     } catch (error) {
-        next(new ApiError(500, `Có lỗi xảy ra khi xóa sách với MASACH=${req.params.MASACH}.`));
+        next(error);
     }
 };
-
-// Xóa tất cả sách
-exports.deleteAll = async (req, res, next) => {
-    try {
-        const bookService = new BookService(MongoDB.client);
-        const deletedCount = await bookService.deleteAll();
-
-        res.send({
-            message: `Đã xóa ${deletedCount} sách.`,
-        });
-    } catch (error) {
-        next(new ApiError(500, "Có lỗi xảy ra khi xóa tất cả sách."));
-    }
-};
-
 // Tìm kiếm sách theo tên hoặc tác giả
 exports.search = async (req, res, next) => {
     try {
-        const query = req.query.q;
-        if (!query) {
-            return next(new ApiError(400, "Không có từ khóa tìm kiếm."));
-        }
-
-        const bookService = new BookService(MongoDB.client);
-        const results = await bookService.search(query);
-
-        res.send(results);
+        const query = req.query.q || ""; // Lấy query từ request
+        const bookService = new BookService();
+        const books = await bookService.search(query);
+        res.json(books);
     } catch (error) {
-        next(new ApiError(500, "Có lỗi xảy ra khi tìm kiếm sách."));
+        next(error);
     }
 };
-
-// Lọc sách theo nhà xuất bản
+// Tìm sách theo nhà xuất bản
 exports.findBooksByPublisher = async (req, res, next) => {
     try {
-        const bookService = new BookService(MongoDB.client);
-        const documents = await bookService.findBooksByPublisher(req.params.MANXB);
-
-        if (!documents || documents.length === 0) {
-            return next(new ApiError(404, "Không có sách nào thuộc nhà xuất bản này."));
-        }
-
-        res.send(documents);
+        const bookService = new BookService();
+        const books = await bookService.findBooksByPublisher(req.params.MANXB);
+        res.json(books);
     } catch (error) {
-        next(new ApiError(500, `Có lỗi xảy ra khi lấy sách theo MANXB=${req.params.MANXB}.`));
+        next(error);
     }
 };

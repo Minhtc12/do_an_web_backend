@@ -1,114 +1,86 @@
-const { ObjectId } = require("mongodb");
+const Employee = require("../models/employee.model");
+const bcrypt = require("bcrypt");
 
 class EmployeeService {
-    constructor(client) {
-        this.Employee = client.db().collection("NhanVien"); // Collection NhanVien
-        this.BorrowingRecord = client.db().collection("THEODOIMUONSACH"); // Collection THEODOIMUONSACH
-    }
-
-    // Chuẩn hóa dữ liệu nhân viên
-    extractEmployeeData(payload) {
-        const employee = {
-            MASNV: payload.MASNV,
-            HoTenNV: payload.HoTenNV,
-            Password: payload.Password,
-            ChucVu: payload.ChucVu,
-            DiaChi: payload.DiaChi,
-            SoDienThoai: payload.SoDienThoai,
-        };
-        Object.keys(employee).forEach(
-            (key) => employee[key] === undefined && delete employee[key]
-        );
-        return employee;
-    }
-
     // Thêm nhân viên mới
     async create(payload) {
-        const employee = this.extractEmployeeData(payload);
+        const employee = new Employee(payload);
 
         try {
-            const result = await this.Employee.insertOne(employee);
-            return result.ops[0]; // Trả về nhân viên vừa thêm
+            const savedEmployee = await employee.save();
+            return savedEmployee;
         } catch (error) {
             if (error.code === 11000) {
-                throw new Error("MASNV đã tồn tại. Vui lòng sử dụng một mã khác.");
+                throw new Error("Email hoặc MSNV đã tồn tại. Vui lòng sử dụng một thông tin khác.");
             }
             throw error;
         }
     }
 
-    // Lấy danh sách tất cả nhân viên
+
+
+    // Lấy danh sách nhân viên (có thể lọc)
     async find(filter) {
-        const cursor = this.Employee.find(filter).project({ _id: 0 }); // Loại bỏ `_id` khi trả về
-        return await cursor.toArray();
+        return await Employee.find(filter).select("-_id"); // Loại bỏ _id khi trả về
     }
 
-    // Lấy thông tin nhân viên theo MASNV
-    async findById(masnv) {
-        return await this.Employee.findOne({ MASNV: masnv }, { projection: { _id: 0 } });
-    }
-
-    // Cập nhật thông tin nhân viên theo MASNV
-    async update(masnv, payload) {
-        const filter = { MASNV: masnv }; // Truy vấn theo MASNV
-        const update = this.extractEmployeeData(payload);
-        const result = await this.Employee.findOneAndUpdate(
-            filter,
-            { $set: update },
-            { returnDocument: "after" }
-        );
-
-        if (!result.value) {
-            throw new Error(`Không tìm thấy nhân viên với MASNV=${masnv}.`);
-        }
-
-        return result.value; // Trả về thông tin nhân viên đã cập nhật
-    }
-
-    // Xóa nhân viên theo MASNV
-    async delete(masnv) {
-        // Kiểm tra ràng buộc mượn sách trước khi xóa
-        const linkedRecords = await this.BorrowingRecord.countDocuments({ MASNV: masnv });
-        if (linkedRecords > 0) {
-            throw new Error("Không thể xóa nhân viên vì còn bản ghi mượn sách liên quan.");
-        }
-
-        const result = await this.Employee.findOneAndDelete({ MASNV: masnv });
-
-        if (!result.value) {
-            throw new Error(`Không tìm thấy nhân viên với MASNV=${masnv}.`);
-        }
-
-        return result.value; // Trả về thông tin nhân viên đã xóa
-    }
-
-    // Xóa toàn bộ nhân viên
-    async deleteAll() {
-        const result = await this.Employee.deleteMany({});
-        return result.deletedCount; // Trả về số lượng nhân viên đã xóa
-    }
-
-    // Kiểm tra thông tin nhân viên (Dành cho đăng nhập hoặc xác thực)
-    async authenticate(masnv, password) {
-        const employee = await this.Employee.findOne({ MASNV: masnv, Password: password });
+    // Lấy thông tin nhân viên theo MSNV
+    async findById(msnv) {
+        const employee = await Employee.findOne({ MSNV: msnv }).select("-_id");
         if (!employee) {
-            throw new Error("Tên đăng nhập hoặc mật khẩu không đúng.");
+            throw new Error(`Không tìm thấy nhân viên với MSNV=${msnv}.`);
         }
+        return employee;
+    }
+
+    // Cập nhật thông tin nhân viên
+    async update(msnv, payload) {
+        const updatedEmployee = await Employee.findOneAndUpdate(
+            { MSNV: msnv },
+            { $set: payload },
+            { new: true }
+        );
+        if (!updatedEmployee) {
+            throw new Error(`Không tìm thấy nhân viên với MSNV=${msnv}.`);
+        }
+        return updatedEmployee;
+    }
+
+    // Xóa nhân viên
+    async delete(msnv) {
+        const deletedEmployee = await Employee.findOneAndDelete({ MSNV: msnv });
+        if (!deletedEmployee) {
+            throw new Error(`Không tìm thấy nhân viên với MSNV=${msnv}.`);
+        }
+        return deletedEmployee;
+    }
+
+    // Xác thực thông tin nhân viên (Đăng nhập bằng Email)
+    async authenticate(email, password) {
+        const employee = await Employee.findOne({ Email: email });
+        if (!employee) {
+            throw new Error("Email không tồn tại.");
+        }
+
+        // Kiểm tra mật khẩu
+        const isPasswordValid = await bcrypt.compare(password, employee.Password);
+        if (!isPasswordValid) {
+            throw new Error("Mật khẩu không đúng.");
+        }
+
         return employee; // Trả về thông tin nhân viên nếu đăng nhập thành công
     }
 
-    // Lấy thông tin nhân viên kèm các bản ghi mượn sách
-    async getEmployeeWithBorrowingRecords(masnv) {
-        const employee = await this.Employee.findOne({ MASNV: masnv }, { projection: { _id: 0 } });
 
-        if (!employee) {
-            throw new Error("Không tìm thấy nhân viên.");
+    // Kiểm tra vai trò (Chức vụ)
+    async checkRole(msnv, requiredRole) {
+        const employee = await Employee.findOne({ MSNV: msnv });
+        if (!employee || employee.ChucVu !== requiredRole) {
+            throw new Error("Bạn không có quyền thực hiện hành động này.");
         }
-
-        const borrowingRecords = await this.BorrowingRecord.find({ MASNV: masnv }).toArray();
-
-        return { ...employee, borrowingRecords };
     }
+    
+
 }
 
 module.exports = EmployeeService;

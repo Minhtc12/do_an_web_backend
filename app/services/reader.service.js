@@ -1,135 +1,91 @@
-const { ObjectId } = require("mongodb");
+const Reader = require("../models/reader.model");
+const BorrowingRecord = require("../models/borrowing.model");
+const bcrypt = require("bcrypt");
 
 class ReaderService {
-    constructor(client) {
-        this.Reader = client.db().collection("DOCGIA"); // Collection DOCGIA
-        this.BorrowingRecord = client.db().collection("THEODOIMUONSACH"); // Collection THEODOIMUONSACH
-    }
-
-    // Chuẩn hóa dữ liệu độc giả
-    extractReaderData(payload) {
-        const reader = {
-            MADOCGIA: payload.MADOCGIA,
-            HOLOT: payload.HOLOT,
-            TEN: payload.TEN,
-            NGAYSINH: payload.NGAYSINH,
-            PHAI: payload.PHAI,
-            DIACHI: payload.DIACHI,
-            DIENTHOAI: payload.DIENTHOAI,
-        };
-        Object.keys(reader).forEach(
-            (key) => reader[key] === undefined && delete reader[key]
-        );
-        return reader;
-    }
-
-    // Thêm mới độc giả
-    async create(payload) {
-        const reader = this.extractReaderData(payload);
+    // Đăng ký tài khoản độc giả
+    async register(payload) {
+        const reader = new Reader(payload);
 
         try {
-            const result = await this.Reader.insertOne(reader);
-            return result.ops[0]; // Trả về độc giả mới được thêm
+            const savedReader = await reader.save();
+            return savedReader;
         } catch (error) {
             if (error.code === 11000) {
-                throw new Error("MADOCGIA đã tồn tại. Vui lòng sử dụng một mã khác.");
+                throw new Error("Email hoặc MADOCGIA đã tồn tại. Vui lòng sử dụng thông tin khác.");
             }
             throw error;
         }
     }
 
-    // Lấy tất cả độc giả
-    async find(filter) {
-        const cursor = this.Reader.find(filter).project({ _id: 0 }); // Loại bỏ _id
-        return await cursor.toArray();
+    // Xác thực đăng nhập
+    async authenticate(email, password) {
+        const reader = await Reader.findOne({ Email: email });
+        if (!reader) {
+            throw new Error("Email không tồn tại.");
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, reader.Password);
+        if (!isPasswordValid) {
+            throw new Error("Mật khẩu không đúng.");
+        }
+
+        return reader;
     }
 
     // Lấy thông tin độc giả theo MADOCGIA
     async findById(madocgia) {
-        return await this.Reader.findOne({ MADOCGIA: madocgia }, { projection: { _id: 0 } });
-    }
-
-    // Cập nhật thông tin độc giả theo MADOCGIA
-    async update(madocgia, payload) {
-        const filter = { MADOCGIA: madocgia }; // Truy vấn theo MADOCGIA
-        const update = this.extractReaderData(payload);
-        const result = await this.Reader.findOneAndUpdate(
-            filter,
-            { $set: update },
-            { returnDocument: "after" }
-        );
-
-        if (!result.value) {
-            throw new Error(`Không tìm thấy độc giả với MADOCGIA=${madocgia}.`);
-        }
-
-        return result.value;
-    }
-
-    // Xóa độc giả theo MADOCGIA
-    async delete(madocgia) {
-        // Kiểm tra bản ghi mượn sách liên quan trước khi xóa
-        const borrowingCount = await this.BorrowingRecord.countDocuments({ MADOCGIA: madocgia });
-        if (borrowingCount > 0) {
-            throw new Error("Không thể xóa độc giả vì còn bản ghi mượn sách liên quan.");
-        }
-
-        const result = await this.Reader.findOneAndDelete({ MADOCGIA: madocgia });
-
-        if (!result.value) {
-            throw new Error(`Không tìm thấy độc giả với MADOCGIA=${madocgia}.`);
-        }
-
-        return result.value;
-    }
-
-    // Lấy thông tin độc giả kèm lịch sử mượn sách
-    async getReaderWithBorrowingHistory(madocgia) {
-        const reader = await this.Reader.findOne({ MADOCGIA: madocgia }, { projection: { _id: 0 } });
-
+        const reader = await Reader.findOne({ MADOCGIA: madocgia }).select("-Password");
         if (!reader) {
-            throw new Error("Không tìm thấy độc giả.");
+            throw new Error(`Không tìm thấy độc giả với MADOCGIA=${madocgia}.`);
         }
-
-        const borrowingHistory = await this.BorrowingRecord.find({ MADOCGIA: madocgia }).toArray();
-
-        return { ...reader, borrowingHistory };
+        return reader;
     }
 
-    // Đếm số lượng sách đang mượn theo MADOCGIA
-    async countBorrowedBooks(madocgia) {
-        const count = await this.BorrowingRecord.countDocuments({ MADOCGIA: madocgia, NGAYTRA: null });
-        return count; // Trả về số lượng sách đang mượn
+    // Cập nhật thông tin độc giả
+    async update(madocgia, payload) {
+        const updatedReader = await Reader.findOneAndUpdate(
+            { MADOCGIA: madocgia },
+            { $set: payload },
+            { new: true }
+        );
+        if (!updatedReader) {
+            throw new Error(`Không tìm thấy độc giả với MADOCGIA=${madocgia}.`);
+        }
+        return updatedReader;
     }
 
-    // Lấy danh sách độc giả chưa trả sách
-    async findReadersWithUnreturnedBooks() {
-        const readers = await this.BorrowingRecord.aggregate([
-            { $match: { NGAYTRA: null } }, // Lọc các bản ghi chưa trả sách
-            {
-                $lookup: {
-                    from: "DOCGIA",
-                    localField: "MADOCGIA",
-                    foreignField: "MADOCGIA",
-                    as: "ReaderDetails",
-                },
-            },
-            { $unwind: "$ReaderDetails" }, // Giải nén dữ liệu độc giả
-            {
-                $project: {
-                    ReaderDetails: 1,
-                },
-            },
-        ]).toArray();
-
-        return readers.map(record => record.ReaderDetails);
+    // Tìm kiếm sách (không yêu cầu đăng nhập)
+    async searchBooks(keyword) {
+        // Giả sử bạn có model SACH
+        const books = await Book.find({ TenSach: new RegExp(keyword, "i") }).select("-_id");
+        return books;
     }
+    // // Gửi yêu cầu mượn sách
+    // async requestBorrowBook(madocgia, masach) {
+    //     const book = await Book.findOne({ MASACH: masach });
+    //     if (!book) {
+    //         throw new Error(`Sách với MASACH=${masach} không tồn tại.`);
+    //     }
 
-    // Xóa toàn bộ độc giả
-    async deleteAll() {
-        const result = await this.Reader.deleteMany({});
-        return result.deletedCount; // Trả về số lượng độc giả đã xóa
-    }
+    //     // Tạo yêu cầu mượn sách ở trạng thái "pending"
+    //     const borrowingRecord = new BorrowingRecord({
+    //         MADOCGIA: madocgia,
+    //         MASACH: masach,
+    //         NGAYMUON: new Date(),
+    //         NGAYTRA: null,
+    //         MSNV: null, // Sẽ được gán khi nhân viên xác nhận
+    //         Status: "pending" // Trạng thái chờ xác nhận
+    //     });
+
+    //     try {
+    //         const savedRecord = await borrowingRecord.save();
+    //         return savedRecord; // Trả về bản ghi yêu cầu
+    //     } catch (error) {
+    //         throw new Error("Không thể yêu cầu mượn sách. Có thể bản ghi đã tồn tại.");
+    //     }
+    // }
+
 }
 
 module.exports = ReaderService;
