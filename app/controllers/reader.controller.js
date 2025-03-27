@@ -3,13 +3,16 @@ const jwt = require("jsonwebtoken");
 
 // Đăng ký tài khoản độc giả
 exports.register = async (req, res, next) => {
-    try {
-        const readerService = new ReaderService();
-        const result = await readerService.register(req.body);
-        res.json(result);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const { Email, TEN, Password } = req.body; // Chỉ lấy những trường cần thiết
+    const readerService = new ReaderService();
+
+    // Gọi Service để xử lý đăng ký
+    const result = await readerService.register({ Email, TEN, Password });
+    res.status(201).json({ message: "Registration successful", reader: result });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Đăng nhập và tạo token JWT
@@ -20,13 +23,20 @@ exports.login = async (req, res, next) => {
         const readerService = new ReaderService();
         const reader = await readerService.authenticate(Email, Password);
 
+        // Tạo token JWT
         const token = jwt.sign(
             { MADOCGIA: reader.MADOCGIA, Email: reader.Email },
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
 
-        res.json({ message: "Đăng nhập thành công!", token });
+        // Trả về token và vai trò (role = "Reader")
+        res.json({
+            message: "Đăng nhập thành công!",
+            token,
+            role: "Reader",
+            name: reader.TEN,
+        });
     } catch (error) {
         next(error);
     }
@@ -44,14 +54,25 @@ exports.getInfo = async (req, res, next) => {
 };
 
 // Cập nhật thông tin tài khoản độc giả
+// exports.updateInfo = async (req, res, next) => {
+//     try {
+//         const readerService = new ReaderService();
+//         const result = await readerService.update(req.params.MADOCGIA, req.body);
+//         res.json(result);
+//     } catch (error) {
+//         next(error);
+//     }
+// };
 exports.updateInfo = async (req, res, next) => {
-    try {
-        const readerService = new ReaderService();
-        const result = await readerService.update(req.params.MADOCGIA, req.body);
-        res.json(result);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const { MADOCGIA } = req.params;
+    const readerService = new ReaderService();
+
+    const updatedReader = await readerService.update(MADOCGIA, req.body); // Cập nhật thông tin
+    res.json({ message: "Information updated successfully", reader: updatedReader });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Tìm kiếm sách

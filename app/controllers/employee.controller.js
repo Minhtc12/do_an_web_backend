@@ -57,21 +57,23 @@ exports.delete = async (req, res, next) => {
 };
 // Đăng nhập (Xác thực bằng Email)
 exports.login = async (req, res, next) => {
-    const { Email, Password } = req.body;
+  const { Email, Password } = req.body;
 
-    try {
-        const employeeService = new EmployeeService();
-        const employee = await employeeService.authenticate(Email, Password);
+  try {
+    const employeeService = new EmployeeService();
+    const employee = await employeeService.authenticate(Email, Password);
 
-        // Tạo token JWT
-        const token = jwt.sign(
-            { MSNV: employee.MSNV, Email: employee.Email, ChucVu: employee.ChucVu },
-            process.env.JWT_SECRET, // Secret key để mã hóa
-            { expiresIn: "1h" } // Token có hiệu lực trong 1 giờ
-        );
+    // Tạo token JWT
+    const token = jwt.sign(
+      { MSNV: employee.MSNV, Email: employee.Email, ChucVu: employee.ChucVu },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-        res.json({ message: "Đăng nhập thành công!", token });
-    } catch (error) {
-        next(error);
-    }
+    // Trả về token và vai trò từ Chức vụ của nhân viên
+    res.json({ message: "Đăng nhập thành công!", token, role: employee.ChucVu });
+  } catch (error) {
+    console.error("Lỗi trong login controller:", error.message);
+    next(error);
+  }
 };

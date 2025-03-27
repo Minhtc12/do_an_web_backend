@@ -3,16 +3,16 @@ const bcrypt = require("bcrypt");
 
 const ReaderSchema = new mongoose.Schema({
     MADOCGIA: { type: String, required: true, unique: true }, // Khóa chính
-    HOLOT: { type: String, required: true }, // Họ lót
+    HOLOT: { type: String }, // Họ lót
     TEN: { type: String, required: true }, // Tên
     NGAYSINH: { 
         type: Date, 
-        required: true,
+        
         get: (date) => date.toISOString().split("T")[0] // Chỉ lấy phần ngày (yyyy-mm-dd)
     },
-    PHAI: { type: String, required: true }, // Ví dụ: "Nam" hoặc "Nữ"
-    DIACHI: { type: String, required: true }, // Địa chỉ
-    DIENTHOAI: { type: String, required: true }, // Số điện thoại
+    PHAI: { type: String }, // Ví dụ: "Nam" hoặc "Nữ"
+    DIACHI: { type: String }, // Địa chỉ
+    DIENTHOAI: { type: String }, // Số điện thoại
     Email: { type: String, required: true, unique: true, match: /.+\@.+\..+/ }, // Email, định dạng hợp lệ
     Password: { type: String, required: true }, // Mật khẩu (sẽ được mã hóa)
 }, {

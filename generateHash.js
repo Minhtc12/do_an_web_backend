@@ -7,4 +7,4 @@ async function generateHash(password) {
     console.log(`Hash: ${hashedPassword}`);
 }
 
-generateHash("examplePassword123"); // Thay "examplePassword123" bằng mật khẩu mà bạn muốn sử dụng
+generateHash("minhB2207543"); // Thay "examplePassword123" bằng mật khẩu mà bạn muốn sử dụng

@@ -4,18 +4,21 @@ const bcrypt = require("bcrypt");
 
 class ReaderService {
     // Đăng ký tài khoản độc giả
-    async register(payload) {
-        const reader = new Reader(payload);
+   async register(payload) {
+    const reader = new Reader({
+        ...payload,
+        MADOCGIA: `DG${Date.now()}` // Sinh mã độc giả tự động
+    });
 
-        try {
-            const savedReader = await reader.save();
-            return savedReader;
-        } catch (error) {
-            if (error.code === 11000) {
-                throw new Error("Email hoặc MADOCGIA đã tồn tại. Vui lòng sử dụng thông tin khác.");
-            }
-            throw error;
+    try {
+        const savedReader = await reader.save();
+        return savedReader;
+    } catch (error) {
+        if (error.code === 11000) {
+        throw new Error("Email đã được sử dụng. Vui lòng sử dụng email khác.");
         }
+        throw error;
+    }
     }
 
     // Xác thực đăng nhập

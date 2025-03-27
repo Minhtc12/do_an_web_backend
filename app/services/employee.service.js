@@ -59,12 +59,14 @@ class EmployeeService {
     async authenticate(email, password) {
         const employee = await Employee.findOne({ Email: email });
         if (!employee) {
+            console.error("Error in Email", email);
             throw new Error("Email không tồn tại.");
         }
 
         // Kiểm tra mật khẩu
         const isPasswordValid = await bcrypt.compare(password, employee.Password);
         if (!isPasswordValid) {
+            console.error("Error in Mật khẩu:", password);
             throw new Error("Mật khẩu không đúng.");
         }
 
