@@ -7,7 +7,8 @@ const BorrowingRecordSchema = new mongoose.Schema({
     NGAYMUON: { type: Date, required: true },  // Ngày mượn
     NGAYTRA: { type: Date, required: false },  // Ngày trả (null nếu chưa trả)
     MSNV: { type: String, required: false },   // Nhân viên xử lý
-    TrangThai: { type: String, required: true, default: "pending" }, // Trạng thái: pending, approved, returned
+    TrangThai: { type: String, required: true,enum: ["pending", "approved", "returned"], // Chỉ cho phép các trạng thái này
+ default: "pending" }, // Trạng thái: pending, approved, returned
 }, {
     versionKey: false // Loại bỏ trường __v
 });

@@ -33,11 +33,17 @@ exports.returnBook = async (req, res, next) => {
   const { MaMuon } = req.params;
 
   try {
+    // Khởi tạo service
     const borrowingService = new BorrowingService();
+
+    // Gọi hàm xử lý logic trả sách từ service
     const result = await borrowingService.returnBook(MaMuon);
+
+    // Trả về thông báo kết quả cho frontend
     res.json(result);
   } catch (error) {
-    next(error);
+    console.error("Lỗi khi xử lý trả sách tại controller:", error.message);
+    res.status(500).json({ message: "Có lỗi xảy ra khi trả sách." });
   }
 };
 // lấy danh sách yêu cầu chờ
@@ -79,5 +85,31 @@ console.log("MADOCGIA từ token:", MADOCGIA);
     res.json(history);
   } catch (error) {
     next(error);
+  }
+};
+
+const borrowingService = new BorrowingService();
+
+exports.getPendingBooksByUser = async (req, res, next) => {
+  const { MADOCGIA } = req.user;
+
+  try {
+    const pendingBooks = await borrowingService.getPendingBooksByUser(MADOCGIA);
+    res.json(pendingBooks);
+  } catch (error) {
+    console.error("Lỗi tại controller getPendingBooksByUser:", error.message);
+    res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách sách chờ duyệt." });
+  }
+};
+
+exports.getBorrowedBooksByUser = async (req, res, next) => {
+  const { MADOCGIA } = req.user;
+
+  try {
+    const borrowedBooks = await borrowingService.getBorrowedBooksByUser(MADOCGIA);
+    res.json(borrowedBooks);
+  } catch (error) {
+    console.error("Lỗi tại controller getBorrowedBooksByUser:", error.message);
+    res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách sách đã mượn." });
   }
 };

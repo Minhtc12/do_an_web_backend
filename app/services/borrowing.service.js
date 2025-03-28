@@ -78,16 +78,32 @@ class BorrowingService {
     }
 
     // Trả sách
-    async returnBook(MaMuon) {
-  const borrow = await BorrowingRecord.findOne({ MaMuon, TrangThai: "not-returned" });
-  if (!borrow) throw new Error("Không tìm thấy yêu cầu cần trả hoặc sách đã được trả.");
+  async returnBook(MaMuon) {
+    try {
+      console.log("MaMuon nhận được từ request:", MaMuon);
 
-  borrow.TrangThai = "returned";
-  borrow.NGAYTRA = new Date(); // Cập nhật ngày trả
-  await borrow.save();
+      // Tìm bản ghi mượn sách với trạng thái chưa trả
+      const borrow = await BorrowingRecord.findOne({
+        MaMuon,
+        TrangThai: { $in: ["approved"] },
+        NGAYTRA: null, // Sách chưa trả
+      });
 
-  return { message: "Sách đã được trả thành công." };
-}
+      if (!borrow) {
+        throw new Error("Không tìm thấy bản ghi cần trả hoặc sách đã được trả.");
+      }
+
+      // Cập nhật trạng thái trả sách
+      borrow.TrangThai = "returned";
+      borrow.NGAYTRA = new Date(); // Ghi nhận ngày trả sách
+      await borrow.save();
+
+      return { message: "Sách đã được trả thành công." };
+    } catch (error) {
+      console.error("Lỗi khi xử lý logic trả sách tại service:", error.message);
+      throw new Error("Không thể xử lý yêu cầu trả sách.");
+    }
+  }
     async getBooksNotReturned() {
   return await BorrowingRecord.find({ TrangThai: "approved", NGAYTRA: null }).sort({ NGAYMUON: -1 });
 }
@@ -101,6 +117,41 @@ async cancelBorrowRequest(MaMuon) {
 async getBorrowHistoryByUser(MADOCGIA) {
   return await BorrowingRecord.find({ MADOCGIA }).populate("MASACH", "TENSACH") .sort({ NGAYMUON: -1 });
 }
+
+
+
+  // Lấy danh sách sách đang chờ duyệt
+  async getPendingBooksByUser(MADOCGIA) {
+    try {
+      const pendingBooks = await BorrowingRecord.find({
+        MADOCGIA,
+        TrangThai: "pending",
+      }).populate("MASACH", "TENSACH SOQUYEN DONGIA");
+
+      return pendingBooks;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách sách chờ duyệt từ service:", error.message);
+      throw new Error("Không thể lấy danh sách sách chờ duyệt.");
+    }
+  }
+
+  // Lấy danh sách sách đã mượn
+  async getBorrowedBooksByUser(MADOCGIA) {
+    try {
+      const borrowedBooks = await BorrowingRecord.find({
+        MADOCGIA,
+        TrangThai: { $in: ["approved", "borrowed"] },
+      }).populate("MASACH", "TENSACH SOQUYEN DONGIA");
+
+      return borrowedBooks;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách sách đã mượn từ service:", error.message);
+      throw new Error("Không thể lấy danh sách sách đã mượn.");
+    }
+  }
+
+
+
 }
 
 module.exports = BorrowingService;
