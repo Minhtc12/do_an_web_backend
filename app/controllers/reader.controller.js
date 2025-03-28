@@ -25,7 +25,9 @@ exports.login = async (req, res, next) => {
 
         // Tạo token JWT
         const token = jwt.sign(
-            { MADOCGIA: reader.MADOCGIA, Email: reader.Email },
+            { MADOCGIA: reader.MADOCGIA, 
+              Email: reader.Email,
+             },
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
         );
@@ -36,6 +38,7 @@ exports.login = async (req, res, next) => {
             token,
             role: "Reader",
             name: reader.TEN,
+            MADOCGIA: reader.MADOCGIA,
         });
     } catch (error) {
         next(error);
@@ -44,13 +47,14 @@ exports.login = async (req, res, next) => {
 
 // Lấy thông tin độc giả
 exports.getInfo = async (req, res, next) => {
-    try {
-        const readerService = new ReaderService();
-        const reader = await readerService.findById(req.params.MADOCGIA);
-        res.json(reader);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const readerService = new ReaderService();
+    // Lấy MADOCGIA từ token (req.user)
+    const reader = await readerService.findById(req.user.MADOCGIA); 
+    res.json(reader);
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Cập nhật thông tin tài khoản độc giả
@@ -65,10 +69,9 @@ exports.getInfo = async (req, res, next) => {
 // };
 exports.updateInfo = async (req, res, next) => {
   try {
-    const { MADOCGIA } = req.params;
     const readerService = new ReaderService();
-
-    const updatedReader = await readerService.update(MADOCGIA, req.body); // Cập nhật thông tin
+    // Lấy MADOCGIA từ token (req.user)
+    const updatedReader = await readerService.update(req.user.MADOCGIA, req.body); 
     res.json({ message: "Information updated successfully", reader: updatedReader });
   } catch (error) {
     next(error);

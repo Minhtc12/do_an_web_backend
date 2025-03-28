@@ -25,24 +25,25 @@ exports.findAll = async (req, res, next) => {
 
 // Lấy thông tin nhân viên theo MSNV
 exports.findById = async (req, res, next) => {
-    try {
-        const employeeService = new EmployeeService();
-        const employee = await employeeService.findById(req.params.MSNV);
-        res.json(employee);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const employeeService = new EmployeeService();
+    // Lấy MSNV từ token (req.user)
+    const employee = await employeeService.findById(req.user.MSNV);
+    res.json(employee);
+  } catch (error) {
+    next(error);
+  }
 };
-
 // Cập nhật thông tin nhân viên
 exports.update = async (req, res, next) => {
-    try {
-        const employeeService = new EmployeeService();
-        const updatedEmployee = await employeeService.update(req.params.MSNV, req.body);
-        res.json(updatedEmployee);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const employeeService = new EmployeeService();
+    // Lấy MSNV từ token (req.user)
+    const updatedEmployee = await employeeService.update(req.user.MSNV, req.body); 
+    res.json({ message: "Employee updated successfully", employee: updatedEmployee });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Xóa nhân viên
@@ -71,7 +72,7 @@ exports.login = async (req, res, next) => {
     );
 
     // Trả về token và vai trò từ Chức vụ của nhân viên
-    res.json({ message: "Đăng nhập thành công!", token, role: employee.ChucVu });
+    res.json({ message: "Đăng nhập thành công!", token, role: employee.ChucVu,MSNV: employee.MSNV, });
   } catch (error) {
     console.error("Lỗi trong login controller:", error.message);
     next(error);

@@ -13,11 +13,8 @@ router.post("/login", readerController.login);
 // Tìm kiếm sách (không yêu cầu đăng nhập)
 router.get("/search", readerController.searchBooks);
 
-// Lấy thông tin tài khoản (yêu cầu đăng nhập)
-router.get("/:MADOCGIA", authenticate, readerController.getInfo);
-
-// Cập nhật thông tin tài khoản (yêu cầu đăng nhập)
-router.put("/:MADOCGIA", authenticate, readerController.updateInfo);
+router.get("/me", authenticate, readerController.getInfo); // Lấy thông tin độc giả từ JWT
+router.put("/me", authenticate, readerController.updateInfo); // Cập nhật thông tin độc giả từ JWT
 // Gửi yêu cầu mượn sách
 // router.post("/borrow/request", authenticate, readerController.requestBorrowBook);
 

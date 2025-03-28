@@ -14,11 +14,8 @@ router.post("/", authenticate, authorize(["Quản lý"]), employeeController.cre
 // Lấy danh sách nhân viên (Chỉ Quản lý có quyền)
 router.get("/", authenticate, authorize(["Quản lý"]), employeeController.findAll);
 
-// Lấy thông tin nhân viên cụ thể theo MSNV (Chỉ Quản lý có quyền)
-router.get("/:MSNV", authenticate, authorize(["Quản lý"]), employeeController.findById);
-
-// Cập nhật thông tin nhân viên (Chỉ Quản lý có quyền)
-router.put("/:MSNV", authenticate, authorize(["Quản lý"]), employeeController.update);
+router.get("/me", authenticate, employeeController.findById); // Lấy thông tin nhân viên từ JWT
+router.put("/me", authenticate, employeeController.update); // Cập nhật thông tin nhân viên từ JWT
 
 // Xóa nhân viên (Chỉ Quản lý có quyền)
 router.delete("/:MSNV", authenticate, authorize(["Quản lý"]), employeeController.delete);

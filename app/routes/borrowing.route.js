@@ -14,6 +14,12 @@ router.get("/requests/pending", authenticate, authorize(["Nhân viên", "Quản 
 router.put("/approve/:MaMuon", authenticate, authorize(["Nhân viên", "Quản lý"]), borrowingController.approveBorrow);
 
 // Trả sách
-router.put("/return/:MaMuon", authenticate, authorize(["Nhân viên", "Quản lý"]), borrowingController.returnBook);
+router.put("/return/:MaMuon", authenticate,  authorize(["Độc giả"]), borrowingController.returnBook);
+//ds chưa trả
+router.get("/not-returned", authenticate, authorize(["Nhân viên", "Quản lý"]),borrowingController.getBooksNotReturned);
+//huy mượn
+router.delete("/cancel/:MaMuon", authenticate, authorize(["Độc giả"]), borrowingController.cancelBorrowRequest);
+//lich su mượn
+router.get("/history", authenticate, authorize(["Độc giả"]), borrowingController.getBorrowHistoryByUser);
 
 module.exports = router;

@@ -14,5 +14,7 @@ router.get("/", bookController.findAll); // Lấy danh sách sách
 router.get("/:MASACH", bookController.findById); // Lấy thông tin sách theo MASACH
 router.get("/search", bookController.search); // Tìm kiếm sách theo tên hoặc tác giả
 router.get("/publisher/:MANXB", bookController.findBooksByPublisher); // Tìm sách theo nhà xuất bản
+router.get("/available", bookController.getAvailableBooks);
+
 
 module.exports = router;
